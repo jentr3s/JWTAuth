@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
-const tokenList = {}
+let tokenList = {}
 
 router.post('/signup', function (req, res) {
     console.log(req.body);
@@ -65,7 +65,8 @@ router.post('/signin', (req, res) => {
                     return res.status(200).json({
                         success: 'Welcome to the JWT Auth',
                         token: JWTToken,
-                        refreshToken: refreshToken
+                        refreshToken: refreshToken,
+                        tokenList: tokenList
                     });
                 }
                 return res.status(401).json({
@@ -80,11 +81,16 @@ router.post('/signin', (req, res) => {
         });
 });
 
+
+router.use(require('../tokenChecker'))
+
+
 router.post('/token', (req, res) => {
     const postData = req.body
-    if ((postData.refreshToken) && (postData.refreshToken in tokenList)) {
+
+    if ((postData.refreshToken && postData.refreshToken in tokenList)) {
         const refreshToken = jwt.sign({
-            email: user.email,
+            email: postData.email,
             _id: '5ba9cfa0d1cc8733f407b186'
         },
             'secret',
@@ -93,12 +99,19 @@ router.post('/token', (req, res) => {
             });
 
         // update the token in the list
-        tokenList[postData.refreshToken].token = token
+        tokenList[postData.refreshToken] = refreshToken
         return res.status(200).json({
             success: 'Refresh Token',
             refreshToken: refreshToken
         });
+    } else {
+        return res.status(401).json({
+            failed: 'no tokenlist',
+            tokenList: tokenList
+        });
     }
+
+
 });
 
 router.get('/secure', (req, res) => {
@@ -106,6 +119,5 @@ router.get('/secure', (req, res) => {
     res.send('I am secured...')
 })
 
-router.use(require('../tokenChecker'))
 
 module.exports = router;
